@@ -83,8 +83,8 @@ class LitTransformer(pl.LightningModule):
                 score += 1
         acc = score / len(target.rstrip())
 
-        self.log(f"val_loss", loss, prog_bar=True)
-        self.log(f"val_acc", acc, prog_bar=True)
+        #self.log(f"val_loss", loss, prog_bar=True)
+        #self.log(f"val_acc", acc, prog_bar=True)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
