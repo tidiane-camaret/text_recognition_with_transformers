@@ -111,7 +111,7 @@ def train(path,
 
     trainer = pl.Trainer(max_epochs=5,
                          num_processes=2,
-                         accelerator="auto"
+                         gpus=-1
 
                          )
     trainer.fit(transformer, train_set, val_set)
