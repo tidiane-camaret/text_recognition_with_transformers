@@ -78,7 +78,7 @@ class LitTransformer(pl.LightningModule):
         output = train_utils.tensor_to_string(images[0].detach().cpu().numpy(), voc_list=VOC_LIST)
         target = train_utils.tensor_to_string(targets[0].detach().cpu().numpy(), voc_list=VOC_LIST)
         score = 0
-        for l in range(min(len(target),len(output))):
+        for l in range(min(len(target), len(output))):
             if output[l] == target[l]:
                 score += 1
         acc = score / len(target.rstrip())
@@ -146,7 +146,7 @@ def train(path,
          batch_size,
          freeze):
 
-    num_workers, num_gpus = (2, -1) if torch.cuda.is_available() else (0, 0)
+    num_workers, num_gpus = (2, 1) if torch.cuda.is_available() else (0, 0)
 
     transformer = LitTransformer(freeze)
 
