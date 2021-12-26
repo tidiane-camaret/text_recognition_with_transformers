@@ -1,10 +1,12 @@
 import argparse
 import sys
+import os
 from string import ascii_lowercase
 
 import torch
 import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
+os.environ['TORCH_HOME'] = 'models'
 
 import pytorch_lightning as pl
 
