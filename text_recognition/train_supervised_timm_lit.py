@@ -110,7 +110,9 @@ def train(path,
     transformer = LitTransformer(freeze)
 
     trainer = pl.Trainer(max_epochs=5,
-                         #num_processes=2,
+                         num_processes=2,
+                         accelerator="auto"
+
                          )
     trainer.fit(transformer, train_set, val_set)
 
@@ -137,7 +139,7 @@ if __name__ == '__main__':
     cmdline_parser.add_argument('-f', '--freeze',
                                 default=False,
                                 help='freeze weights ?',
-                                type=str)
+                                type=bool)
 
     args, unknowns = cmdline_parser.parse_known_args()
 
