@@ -51,7 +51,7 @@ def train(path,
 
     model.head = nn.Linear(192, 30)
 
-    #print(model)
+    print(model)
 
 
     opt = torch.optim.Adam(model.parameters(), lr=0.01)#3e-4)

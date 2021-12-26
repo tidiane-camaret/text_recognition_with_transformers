@@ -52,8 +52,8 @@ class LitTransformer(pl.LightningModule):
         # training_step defined the train loop.
         # It is independent of forward
         images, targets = batch
-        #images = images.to(device)
-        #targets = targets.to(device)
+        images = images.cuda()
+        targets = targets.cuda()
         images = image_utils.reshape_image_by_patch(images)
         images = images.repeat(1, 3, 1, 1)
 
@@ -65,8 +65,8 @@ class LitTransformer(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         images, targets = batch
-        #images = images.to(device)
-        #targets = targets.to(device)
+        images = images.cuda()
+        targets = targets.cuda()
         images = image_utils.reshape_image_by_patch(images)
         images = images.repeat(1, 3, 1, 1)
 
@@ -159,7 +159,8 @@ def train(path,
                                              string_tensor_length=string_len,
                                              voc_list=ascii_lowercase + ' ',
                                              dataset_dir=path,
-                                             num_workers= num_workers
+                                             num_workers=num_workers,
+
                                              )
     trainer.fit(transformer, datamodule=dataset)
 
