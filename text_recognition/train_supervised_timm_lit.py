@@ -34,12 +34,13 @@ def create_model(freeze=False):
 
     return model
 
+
 class LitTransformer(pl.LightningModule):
     def __init__(self, freeze):
         super().__init__()
         self.model = create_model(freeze)
         self.criterion = torch.nn.BCELoss()
-        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        #self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     def forward(self, x):
         # in lightning, forward defines the prediction/inference actions
@@ -49,8 +50,8 @@ class LitTransformer(pl.LightningModule):
         # training_step defined the train loop.
         # It is independent of forward
         images, targets = batch
-        images = images.to(device)
-        targets = targets.to(device)
+        #images = images.to(device)
+        #targets = targets.to(device)
         images = image_utils.reshape_image_by_patch(images)
         images = images.repeat(1, 3, 1, 1)
 
@@ -62,8 +63,8 @@ class LitTransformer(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         images, targets = batch
-        images = images.to(device)
-        targets = targets.to(device)
+        #images = images.to(device)
+        #targets = targets.to(device)
         images = image_utils.reshape_image_by_patch(images)
         images = images.repeat(1, 3, 1, 1)
 
@@ -87,13 +88,52 @@ class LitTransformer(pl.LightningModule):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
         return optimizer
 
+class TextDataModule(pl.LightningDataModule):
+    def __init__(self,
+                                             batch_size,
+                                             img_size,
+                                             max_len,
+                                             string_tensor_length,
+                                             voc_list,
+                                             dataset_dir):
+        super().__init__()
+        self.batch_size = batch_size
+        self.img_size = img_size
+        self.max_len = max_len
+        self.string_tensor_length = string_tensor_length
+        self.voc_list = voc_list
+        self.dataset_dir = dataset_dir
 
+
+    def setup(self):
+
+
+        self.dataset = train_utils.string_img_Dataset(img_size=self.img_size,
+                                             max_len=self.max_len,
+                                             string_tensor_length=self.string_tensor_length,
+                                             voc_list=self.voc_list,
+                                             dataset_dir=self.dataset_dir,
+                                             )
+        self.train_set, self.val_set = torch.utils.data.random_split(self.dataset, [int(len(self.dataset)*0.8), int(len(self.dataset)*0.2)])
+
+    def train_dataloader(self):
+        return torch.utils.data.DataLoader(self.train_set,
+                                          batch_size=self.batch_size,
+                                          num_workers=4,
+                                          drop_last=True)
+
+    def val_dataloader(self):
+        return torch.utils.data.DataLoader(self.val_set,
+                                          batch_size=self.batch_size,
+                                          num_workers=4,
+                                          drop_last=True)
 def train(path,
          dataset_max_len,
          string_len,
          batch_size,
          freeze):
 
+    """
     dataset = train_utils.string_img_Dataset(img_size=(16, string_len * 2 ** 3),
                                              max_len=dataset_max_len,
                                              string_tensor_length=string_len,
@@ -112,6 +152,9 @@ def train(path,
                                           batch_size=batch_size,
                                           num_workers=4,
                                           drop_last=True)
+    """
+
+
     transformer = LitTransformer(freeze)
 
     trainer = pl.Trainer(max_epochs=5,
@@ -119,7 +162,13 @@ def train(path,
                          gpus=-1
 
                          )
-    trainer.fit(transformer, train_set, val_set)
+    dataset = TextDataModule(img_size=(16, string_len * 2 ** 3),
+                                             max_len=dataset_max_len,
+                                             string_tensor_length=string_len,
+                                             voc_list=ascii_lowercase + ' ',
+                                             dataset_dir=path,
+                                             )
+    trainer.fit(transformer, dataset)
 
 
 if __name__ == '__main__':
