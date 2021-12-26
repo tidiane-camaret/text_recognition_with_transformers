@@ -39,6 +39,7 @@ class LitTransformer(pl.LightningModule):
         super().__init__()
         self.model = create_model(freeze)
         self.criterion = torch.nn.BCELoss()
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     def forward(self, x):
         # in lightning, forward defines the prediction/inference actions
@@ -48,6 +49,8 @@ class LitTransformer(pl.LightningModule):
         # training_step defined the train loop.
         # It is independent of forward
         images, targets = batch
+        images = images.to(device)
+        targets = targets.to(device)
         images = image_utils.reshape_image_by_patch(images)
         images = images.repeat(1, 3, 1, 1)
 
@@ -59,6 +62,8 @@ class LitTransformer(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         images, targets = batch
+        images = images.to(device)
+        targets = targets.to(device)
         images = image_utils.reshape_image_by_patch(images)
         images = images.repeat(1, 3, 1, 1)
 
