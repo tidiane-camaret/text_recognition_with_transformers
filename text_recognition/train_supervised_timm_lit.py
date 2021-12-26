@@ -42,7 +42,6 @@ class LitTransformer(pl.LightningModule):
         super().__init__()
         self.model = create_model(freeze)
         self.criterion = torch.nn.BCELoss()
-        #self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     def forward(self, x):
         # in lightning, forward defines the prediction/inference actions
@@ -58,7 +57,7 @@ class LitTransformer(pl.LightningModule):
         output = self.model(images)
         loss = self.criterion(output, targets)
         # Logging to TensorBoard by default
-        #self.log("train_loss", loss)
+        self.log("train_loss", loss)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -72,7 +71,7 @@ class LitTransformer(pl.LightningModule):
         # Logging to TensorBoard by default
         # self.log("val_loss", loss)
 
-        output = train_utils.tensor_to_string(images[0].detach().cpu().numpy(), voc_list=VOC_LIST)
+        output = train_utils.tensor_to_string(output[0].detach().cpu().numpy(), voc_list=VOC_LIST)
         target = train_utils.tensor_to_string(targets[0].detach().cpu().numpy(), voc_list=VOC_LIST)
         score = 0
         for l in range(min(len(target), len(output))):
@@ -80,8 +79,11 @@ class LitTransformer(pl.LightningModule):
                 score += 1
         acc = score / len(target.rstrip())
 
-        self.log(f"val_loss", loss, prog_bar=True)
-        self.log(f"val_acc", acc, prog_bar=True)
+        self.log(f"val_loss", loss, prog_bar=False)
+        self.log(f"acc", acc, prog_bar=False)
+
+        if batch_idx % 10 == 0:
+            print("output : ", output, "\n")
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
@@ -137,6 +139,8 @@ class TextDataModule(pl.LightningDataModule):
         print("VAL LEN :", len(val))
 
         return val
+        
+
 def train(path,
          dataset_max_len,
          string_len,
