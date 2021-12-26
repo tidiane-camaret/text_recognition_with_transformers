@@ -1,6 +1,8 @@
 import argparse
 import sys
 import os
+from typing import Optional
+
 from string import ascii_lowercase
 
 import torch
@@ -95,7 +97,8 @@ class TextDataModule(pl.LightningDataModule):
                                              max_len,
                                              string_tensor_length,
                                              voc_list,
-                                             dataset_dir):
+                                             dataset_dir,
+                                             num_workers):
         super().__init__()
         self.batch_size = batch_size
         self.img_size = img_size
@@ -103,64 +106,52 @@ class TextDataModule(pl.LightningDataModule):
         self.string_tensor_length = string_tensor_length
         self.voc_list = voc_list
         self.dataset_dir = dataset_dir
+        self.num_workers = num_workers
 
 
-    def setup(self):
-
-
+    def setup(self, stage: Optional[str] = None):
         self.dataset = train_utils.string_img_Dataset(img_size=self.img_size,
                                              max_len=self.max_len,
                                              string_tensor_length=self.string_tensor_length,
                                              voc_list=self.voc_list,
                                              dataset_dir=self.dataset_dir,
                                              )
-        self.train_set, self.val_set = torch.utils.data.random_split(self.dataset, [int(len(self.dataset)*0.8), int(len(self.dataset)*0.2)])
+
+        ds_len = int(len(self.dataset) * 0.8)
+        print("DS LEN :", ds_len)
+        self.train_set, self.val_set = torch.utils.data.random_split(self.dataset, [ds_len, len(self.dataset) - ds_len])
+
+        print("DS LEN :", len(self.train_set), len(self.val_set))
 
     def train_dataloader(self):
-        return torch.utils.data.DataLoader(self.train_set,
+        train = torch.utils.data.DataLoader(self.train_set,
                                           batch_size=self.batch_size,
-                                          num_workers=4,
+                                          num_workers=self.num_workers,
                                           drop_last=True)
 
+        print("TRAIN LEN :", len(train))
+        return train
+
     def val_dataloader(self):
-        return torch.utils.data.DataLoader(self.val_set,
+        val = torch.utils.data.DataLoader(self.val_set,
                                           batch_size=self.batch_size,
-                                          num_workers=4,
+                                          num_workers=self.num_workers,
                                           drop_last=True)
+        print("VAL LEN :", len(val))
+
+        return val
 def train(path,
          dataset_max_len,
          string_len,
          batch_size,
          freeze):
 
-    """
-    dataset = train_utils.string_img_Dataset(img_size=(16, string_len * 2 ** 3),
-                                             max_len=dataset_max_len,
-                                             string_tensor_length=string_len,
-                                             voc_list=ascii_lowercase + ' ',
-                                             dataset_dir=path,
-                                             )
-
-    train_set, val_set = torch.utils.data.random_split(dataset, [int(len(dataset)*0.8), int(len(dataset)*0.2)])
-
-    train_set = torch.utils.data.DataLoader(train_set,
-                                          batch_size=batch_size,
-                                          num_workers=4,
-                                          drop_last=True)
-
-    val_set = torch.utils.data.DataLoader(val_set,
-                                          batch_size=batch_size,
-                                          num_workers=4,
-                                          drop_last=True)
-    """
-
+    num_workers, num_gpus = 2, -1 if torch.cuda.is_available() else 0, 0
 
     transformer = LitTransformer(freeze)
 
     trainer = pl.Trainer(max_epochs=5,
-                         num_processes=2,
-                         gpus=-1
-
+                         gpus=num_gpus
                          )
     dataset = TextDataModule(img_size=(16, string_len * 2 ** 3),
                              batch_size=batch_size,
@@ -168,8 +159,9 @@ def train(path,
                                              string_tensor_length=string_len,
                                              voc_list=ascii_lowercase + ' ',
                                              dataset_dir=path,
+                                             num_workers= num_workers
                                              )
-    trainer.fit(transformer, dataset)
+    trainer.fit(transformer, datamodule=dataset)
 
 
 if __name__ == '__main__':
