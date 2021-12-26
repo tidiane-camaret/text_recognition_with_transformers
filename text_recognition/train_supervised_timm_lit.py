@@ -52,9 +52,7 @@ class LitTransformer(pl.LightningModule):
         # training_step defined the train loop.
         # It is independent of forward
         images, targets = batch
-        images = images.cuda()
-        targets = targets.cuda()
-        images = image_utils.reshape_image_by_patch(images)
+        images = image_utils.reshape_image_by_patch(images).type_as(images, device=self.device)
         images = images.repeat(1, 3, 1, 1)
 
         output = self.model(images)
@@ -65,9 +63,8 @@ class LitTransformer(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         images, targets = batch
-        images = images.cuda()
-        targets = targets.cuda()
-        images = image_utils.reshape_image_by_patch(images)
+
+        images = image_utils.reshape_image_by_patch(images).type_as(images, device=self.device)
         images = images.repeat(1, 3, 1, 1)
 
         output = self.model(images)
@@ -83,8 +80,8 @@ class LitTransformer(pl.LightningModule):
                 score += 1
         acc = score / len(target.rstrip())
 
-        #self.log(f"val_loss", loss, prog_bar=True)
-        #self.log(f"val_acc", acc, prog_bar=True)
+        self.log(f"val_loss", loss, prog_bar=True)
+        self.log(f"val_acc", acc, prog_bar=True)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
@@ -160,7 +157,6 @@ def train(path,
                                              voc_list=ascii_lowercase + ' ',
                                              dataset_dir=path,
                                              num_workers=num_workers,
-
                                              )
     trainer.fit(transformer, datamodule=dataset)
 
