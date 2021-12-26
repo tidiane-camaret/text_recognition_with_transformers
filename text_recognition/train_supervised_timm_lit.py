@@ -146,7 +146,7 @@ def train(path,
          batch_size,
          freeze):
 
-    num_workers, num_gpus = 2, -1 if torch.cuda.is_available() else 0, 0
+    num_workers, num_gpus = (2, -1) if torch.cuda.is_available() else (0, 0)
 
     transformer = LitTransformer(freeze)
 
