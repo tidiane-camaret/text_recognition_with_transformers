@@ -163,6 +163,7 @@ def train(path,
 
                          )
     dataset = TextDataModule(img_size=(16, string_len * 2 ** 3),
+                             batch_size=batch_size,
                                              max_len=dataset_max_len,
                                              string_tensor_length=string_len,
                                              voc_list=ascii_lowercase + ' ',
