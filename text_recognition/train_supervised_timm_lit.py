@@ -96,7 +96,8 @@ def train(path,
          string_len,
          batch_size,
          freeze,
-         pretrained):
+         pretrained,
+         im_zoom):
 
     num_workers, num_gpus = (2, 1) if torch.cuda.is_available() else (0, 0)
 
@@ -105,7 +106,7 @@ def train(path,
     trainer = pl.Trainer(max_epochs=5,
                          gpus=num_gpus
                          )
-    dataset = train_utils.string_img_Dataset(img_size=tuple(1*np.array((16, string_len * 2 ** 3))),
+    dataset = train_utils.string_img_Dataset(img_size=tuple(im_zoom*np.array((16, string_len * 2 ** 3))),
                                              batch_size=batch_size,
                                              max_len=dataset_max_len,
                                              string_tensor_length=string_len,
@@ -152,9 +153,13 @@ if __name__ == '__main__':
                                 help='freeze weights ?',
                                 type=bool)
     cmdline_parser.add_argument('-pr', '--pretrained',
-                                default=False,
+                                default=True,
                                 help='pretrained weights ?',
                                 type=bool)
+    cmdline_parser.add_argument('-iz', '--im_zoom',
+                                default=1,
+                                help='image zoom (recommanded between 1 and 3)',
+                                type=int)
 
     args, unknowns = cmdline_parser.parse_known_args()
 
@@ -163,4 +168,5 @@ if __name__ == '__main__':
          string_len=args.str_len,
          batch_size=args.batch_size,
          freeze=args.freeze,
-         pretrained=args.pretrained)
+         pretrained=args.pretrained,
+         im_zoom=args.im_zoom)
