@@ -1,14 +1,12 @@
 import argparse
 import sys
 import os
-from typing import Optional
 import pickle
 from string import ascii_lowercase
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
-from torch.autograd import Variable
 
 os.environ['TORCH_HOME'] = 'models'
 
@@ -17,7 +15,7 @@ import pytorch_lightning as pl
 sys.path.append('utils/')
 import image_utils, train_utils
 sys.path.append('models/')
-import ViTSTR
+import ViTSTR, Discriminators
 
 VOC_LIST = list(ascii_lowercase + ' ')
 
@@ -38,85 +36,12 @@ def create_encoder(freeze=False):
 
     return model
 
-class DiscriminatorMSE(nn.Module):
-    def __init__(self, string_len, voc_len, embed_size, nb_filters):
-        super(DiscriminatorMSE, self).__init__()
-
-        self.Softmax = nn.Softmax(dim=2)
-        self.Embedding = nn.Linear(in_features=voc_len, out_features=embed_size)
-        # nn.Embedding(embedding_dim=1, num_embeddings=embed_size)
-        self.Conv_1 = nn.Conv1d(in_channels=embed_size, out_channels=nb_filters, kernel_size=5, padding=2)
-        self.LayerNorm = nn.LayerNorm(normalized_shape=[nb_filters, string_len])
-        self.LeakyReLU = nn.LeakyReLU(negative_slope=0.2)
-
-        self.discriminator_block = nn.Sequential(
-            nn.Conv1d(in_channels=nb_filters, out_channels=nb_filters, kernel_size=5, padding=2),
-            nn.LayerNorm(normalized_shape=[nb_filters, string_len]),
-            nn.LeakyReLU(negative_slope=0.2))
-
-        self.Conv_2 = nn.Conv1d(in_channels=nb_filters, out_channels=embed_size, kernel_size=5, padding=2)
-        self.LayerNorm_2 = nn.LayerNorm(normalized_shape=[embed_size, string_len])
-        self.LeakyReLU_2 = nn.LeakyReLU(negative_slope=0.2)
-
-        self.LinearFlattened = nn.Linear(string_len*embed_size, 100)
-        self.LinearFlattened2 = nn.Linear(100, 2)
-
-
-        self.Linear = nn.Linear(in_features=embed_size, out_features=1)
-        self.LeakyReLU_3 = nn.LeakyReLU(negative_slope=0.2)
-        self.LinearFinal = nn.Linear(in_features=string_len, out_features=1)
-        self.AvgPool = nn.AvgPool1d(kernel_size=string_len)
-        self.Activ = nn.Tanh()
-
-    def forward(self, x):
-
-        x = self.Softmax(x)
-        #print("softmax : ", x.shape)
-        x = self.Embedding(x)
-        #print("embedding : ", x.shape)
-        x = torch.permute(x, (0, 2, 1))
-        #print("permute : ", x.shape)
-        x = self.Conv_1(x)
-        #print("conv1 : ", x.shape)
-        x = self.LayerNorm(x)
-        #print("layernorm : ", x.shape)
-        x = self.LeakyReLU(x)
-        #print("ReLU : ", x.shape)
-
-        for i in range(3):
-            x = self.discriminator_block(x)
-            #print(x.shape)
-
-        x = self.Conv_2(x)
-        #print("conv : ", x.shape)
-        x = self.LayerNorm_2(x)
-        #print(x.shape)
-        x = self.LeakyReLU_2(x)
-
-        #print("relu : ",x.shape)
-        x = torch.permute(x, (0, 2, 1))
-        #print("permute : ",x.shape)
-        x = self.Linear(x)
-        #print("linear : ", x.shape)
-        x = torch.squeeze(x)
-        #print("squeeze : ",x.shape)
-
-        x = self.LeakyReLU_3(x)
-
-        x = self.AvgPool(x)
-        #print("avgpool : ",x.shape)
-        x = torch.squeeze(x)
-        #print("squeeze : ", x.shape)
-        #x = self.Activ(x)
-
-        return x
-
 
 class LitTransformerGan(pl.LightningModule):
     def __init__(self, freeze, string_len, voc_len, embed_size, nb_filters, lexicon):
         super().__init__()
         self.generator = create_encoder(freeze)
-        self.discriminator = DiscriminatorMSE(string_len, voc_len, embed_size, nb_filters)
+        self.discriminator = Discriminators.DiscriminatorMSE(string_len, voc_len, embed_size, nb_filters)
         self.criterion = torch.nn.MSELoss()
         self.lexicon = lexicon
         self.string_len = string_len
@@ -205,8 +130,8 @@ class LitTransformerGan(pl.LightningModule):
             print("target : ", target, "\n")
 
     def configure_optimizers(self):
-        g_opt = torch.optim.Adam(self.generator.parameters(), lr=1e-5)
-        d_opt = torch.optim.Adam(self.discriminator.parameters(), lr=1e-5)
+        g_opt = torch.optim.RMSprop(self.generator.parameters(), lr=0.001)
+        d_opt = torch.optim.RMSprop(self.discriminator.parameters(), lr=0.001)
         return g_opt, d_opt
 
 def train(images_path,
@@ -216,7 +141,7 @@ def train(images_path,
          freeze,
           lexicon_path ):
 
-    num_workers, num_gpus = (2, 1) if torch.cuda.is_available() else (0, 0)
+    num_workers, num_gpus = (4, 1) if torch.cuda.is_available() else (0, 0)
 
     with open(lexicon_path , 'rb') as f:
         lexicon = pickle.load(f)
@@ -228,7 +153,7 @@ def train(images_path,
                                     nb_filters=512,
                                     lexicon=lexicon)
 
-    trainer = pl.Trainer(max_epochs=5,
+    trainer = pl.Trainer(max_epochs=50,
                          gpus=num_gpus
                          )
     dataset = train_utils.string_img_Dataset(img_size=(16, string_len * 2 ** 3),
@@ -239,7 +164,7 @@ def train(images_path,
                                              dataset_dir=images_path,
                                              )
 
-    ds_len = int(len(dataset) * 0.8)
+    ds_len = int(len(dataset) * 0.95)
 
     train_set, val_set = torch.utils.data.random_split(dataset, [ds_len, len(dataset) - ds_len])
 
