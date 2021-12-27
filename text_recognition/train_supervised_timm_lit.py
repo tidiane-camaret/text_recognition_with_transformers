@@ -39,9 +39,9 @@ def create_model(freeze=False, pretrained=True):
 
 
 class LitTransformer(pl.LightningModule):
-    def __init__(self, freeze):
+    def __init__(self, freeze, pretrained):
         super().__init__()
-        self.model = create_model(freeze)
+        self.model = create_model(freeze, pretrained)
         self.criterion = torch.nn.BCELoss()
 
     def forward(self, x):
@@ -105,7 +105,7 @@ def train(path,
     trainer = pl.Trainer(max_epochs=5,
                          gpus=num_gpus
                          )
-    dataset = train_utils.string_img_Dataset(img_size=tuple(3*np.array((16, string_len * 2 ** 3))),
+    dataset = train_utils.string_img_Dataset(img_size=tuple(1*np.array((16, string_len * 2 ** 3))),
                                              batch_size=batch_size,
                                              max_len=dataset_max_len,
                                              string_tensor_length=string_len,
