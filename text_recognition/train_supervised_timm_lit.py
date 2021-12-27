@@ -25,10 +25,10 @@ def create_model(freeze=False):
         patch_size=16, embed_dim=192, depth=12, num_heads=3, mlp_ratio=4, qkv_bias=True)
 
     url = 'https://dl.fbaipublicfiles.com/deit/deit_tiny_patch16_224-a1311bcf.pth'
-    state_dict = model_zoo.load_url(url, progress=True, map_location='cpu')
-    if "model" in state_dict.keys():
-        state_dict = state_dict["model"]
-    model.load_state_dict(state_dict, strict=False)
+    #state_dict = model_zoo.load_url(url, progress=True, map_location='cpu')
+    #if "model" in state_dict.keys():
+    #    state_dict = state_dict["model"]
+    #model.load_state_dict(state_dict, strict=False)
     if freeze:
         for param in model.parameters():
             param.requires_grad = False
