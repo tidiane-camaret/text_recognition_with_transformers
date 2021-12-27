@@ -20,15 +20,16 @@ import ViTSTR
 VOC_LIST = list(ascii_lowercase + ' ')
 
 
-def create_model(freeze=False):
+def create_model(freeze=False, pretrained=True):
     model = ViTSTR.ViTSTR(
         patch_size=16, embed_dim=192, depth=12, num_heads=3, mlp_ratio=4, qkv_bias=True)
 
     url = 'https://dl.fbaipublicfiles.com/deit/deit_tiny_patch16_224-a1311bcf.pth'
-    #state_dict = model_zoo.load_url(url, progress=True, map_location='cpu')
-    #if "model" in state_dict.keys():
-    #    state_dict = state_dict["model"]
-    #model.load_state_dict(state_dict, strict=False)
+    state_dict = model_zoo.load_url(url, progress=True, map_location='cpu')
+    if "model" in state_dict.keys():
+        state_dict = state_dict["model"]
+    if pretrained:
+        model.load_state_dict(state_dict, strict=False)
     if freeze:
         for param in model.parameters():
             param.requires_grad = False
@@ -94,11 +95,12 @@ def train(path,
          dataset_max_len,
          string_len,
          batch_size,
-         freeze):
+         freeze,
+         pretrained):
 
     num_workers, num_gpus = (2, 1) if torch.cuda.is_available() else (0, 0)
 
-    transformer = LitTransformer(freeze)
+    transformer = LitTransformer(freeze, pretrained)
 
     trainer = pl.Trainer(max_epochs=5,
                          gpus=num_gpus
@@ -149,6 +151,10 @@ if __name__ == '__main__':
                                 default=False,
                                 help='freeze weights ?',
                                 type=bool)
+    cmdline_parser.add_argument('-pr', '--pretrained',
+                                default=False,
+                                help='pretrained weights ?',
+                                type=bool)
 
     args, unknowns = cmdline_parser.parse_known_args()
 
@@ -156,4 +162,5 @@ if __name__ == '__main__':
          dataset_max_len=args.dataset_len,
          string_len=args.str_len,
          batch_size=args.batch_size,
-         freeze=args.freeze)
+         freeze=args.freeze,
+         pretrained=args.pretrained)
