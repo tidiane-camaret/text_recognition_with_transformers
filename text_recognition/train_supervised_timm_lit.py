@@ -84,62 +84,11 @@ class LitTransformer(pl.LightningModule):
 
         if batch_idx % 10 == 0:
             print("output : ", output, "\n")
+            print("target : ", target, "\n")
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
         return optimizer
-
-class TextDataModule(pl.LightningDataModule):
-    def __init__(self,
-                                             batch_size,
-                                             img_size,
-                                             max_len,
-                                             string_tensor_length,
-                                             voc_list,
-                                             dataset_dir,
-                                             num_workers):
-        super().__init__()
-        self.batch_size = batch_size
-        self.img_size = img_size
-        self.max_len = max_len
-        self.string_tensor_length = string_tensor_length
-        self.voc_list = voc_list
-        self.dataset_dir = dataset_dir
-        self.num_workers = num_workers
-
-
-    def setup(self, stage: Optional[str] = None):
-        self.dataset = train_utils.string_img_Dataset(img_size=self.img_size,
-                                             max_len=self.max_len,
-                                             string_tensor_length=self.string_tensor_length,
-                                             voc_list=self.voc_list,
-                                             dataset_dir=self.dataset_dir,
-                                             )
-
-        ds_len = int(len(self.dataset) * 0.8)
-        print("DS LEN :", ds_len)
-        self.train_set, self.val_set = torch.utils.data.random_split(self.dataset, [ds_len, len(self.dataset) - ds_len])
-
-        print("DS LEN :", len(self.train_set), len(self.val_set))
-
-    def train_dataloader(self):
-        train = torch.utils.data.DataLoader(self.train_set,
-                                          batch_size=self.batch_size,
-                                          num_workers=self.num_workers,
-                                          drop_last=True)
-
-        print("TRAIN LEN :", len(train))
-        return train
-
-    def val_dataloader(self):
-        val = torch.utils.data.DataLoader(self.val_set,
-                                          batch_size=self.batch_size,
-                                          num_workers=self.num_workers,
-                                          drop_last=True)
-        print("VAL LEN :", len(val))
-
-        return val
-        
 
 def train(path,
          dataset_max_len,
@@ -154,15 +103,27 @@ def train(path,
     trainer = pl.Trainer(max_epochs=5,
                          gpus=num_gpus
                          )
-    dataset = TextDataModule(img_size=(16, string_len * 2 ** 3),
-                             batch_size=batch_size,
+    dataset = train_utils.string_img_Dataset(img_size=(16, string_len * 2 ** 3),
+                                             batch_size=batch_size,
                                              max_len=dataset_max_len,
                                              string_tensor_length=string_len,
                                              voc_list=ascii_lowercase + ' ',
                                              dataset_dir=path,
-                                             num_workers=num_workers,
                                              )
-    trainer.fit(transformer, datamodule=dataset)
+
+    ds_len = int(len(dataset) * 0.8)
+
+    train_set, val_set = torch.utils.data.random_split(dataset, [ds_len, len(dataset) - ds_len])
+
+    train_set = torch.utils.data.DataLoader(train_set,
+                                        batch_size=batch_size,
+                                        num_workers=num_workers,
+                                        drop_last=True)
+    val_set = torch.utils.data.DataLoader(val_set,
+                                        batch_size=batch_size,
+                                        num_workers=num_workers,
+                                        drop_last=True)
+    trainer.fit(transformer, train_set, val_set)
 
 
 if __name__ == '__main__':
