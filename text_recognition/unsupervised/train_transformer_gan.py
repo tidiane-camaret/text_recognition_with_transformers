@@ -117,7 +117,7 @@ class LitTransformerGan(pl.LightningModule):
         super().__init__()
         self.generator = create_encoder(freeze)
         self.discriminator = DiscriminatorMSE(string_len, voc_len, embed_size, nb_filters)
-        self.criterion = torch.nn.BCELoss()
+        self.criterion = torch.nn.MSELoss()
         self.lexicon = lexicon
         self.string_len = string_len
 
