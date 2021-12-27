@@ -1,7 +1,8 @@
 import argparse
 import sys
-
+import matplotlib.pyplot as plt
 from string import ascii_lowercase
+import numpy as np
 
 import torch
 import torch.nn as nn
@@ -22,7 +23,7 @@ def train(path,
     sys.path.append(utils_path)
     from utils import train_utils
 
-    dataset = train_utils.string_img_Dataset(img_size=(16, string_len * 2 ** 3),
+    dataset = train_utils.string_img_Dataset(img_size=tuple(3*np.array((16, string_len * 2 ** 3))),
                                              max_len=dataset_max_len,
                                              string_tensor_length=string_len,
                                              voc_list=ascii_lowercase + ' ',
@@ -59,13 +60,13 @@ def train(path,
     criterion = torch.nn.BCELoss()
 
     for i, (images, targets) in enumerate(train_loader):
-        #plt.imshow(images[0].permute(1, 2, 0))
-        #plt.show()
+        plt.imshow(images[0].permute(1, 2, 0))
+        plt.show()
 
         images = image_utils.reshape_image_by_patch(images)
 
-        #plt.imshow(images[0].permute(1, 2, 0))#.permute(1, 2, 0))
-        #plt.show()
+        plt.imshow(images[0].permute(1, 2, 0))#.permute(1, 2, 0))
+        plt.show()
 
 
         #loss = mpp_trainer(images)

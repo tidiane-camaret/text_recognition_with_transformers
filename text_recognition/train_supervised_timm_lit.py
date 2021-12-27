@@ -2,7 +2,7 @@ import argparse
 import sys
 import os
 from typing import Optional
-
+import numpy as np
 from string import ascii_lowercase
 
 import torch
@@ -105,7 +105,7 @@ def train(path,
     trainer = pl.Trainer(max_epochs=5,
                          gpus=num_gpus
                          )
-    dataset = train_utils.string_img_Dataset(img_size=(16, string_len * 2 ** 3),
+    dataset = train_utils.string_img_Dataset(img_size=tuple(3*np.array((16, string_len * 2 ** 3))),
                                              batch_size=batch_size,
                                              max_len=dataset_max_len,
                                              string_tensor_length=string_len,
